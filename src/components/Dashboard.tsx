@@ -135,18 +135,57 @@ export function Dashboard() {
         Welcome, {name}
       </h1>
 
+      {/* Current focus banner — full width across the top */}
+      <Card className="border-[color:var(--primary)]/20 bg-[color:var(--accent)]/50 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Target className="h-4 w-4 text-[color:var(--primary)]" />
+            Current focus — {PHASE_LABELS[CURRENT_PHASE]}
+          </div>
+          <Link
+            href="/roadmap"
+            className="text-xs text-[color:var(--muted)] hover:text-[color:var(--primary)]"
+          >
+            View all
+          </Link>
+        </div>
+        {focus.length === 0 ? (
+          <p className="mt-2 text-sm text-[color:var(--muted)]">
+            Nothing in progress this phase.
+          </p>
+        ) : (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {focus.map((r) => (
+              <span
+                key={r.id}
+                className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-[color:var(--card)] px-3 py-1 text-sm"
+              >
+                {r.title}
+                <Badge tone="muted">{STATUS_LABELS[r.status]}</Badge>
+              </span>
+            ))}
+          </div>
+        )}
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Section
-          icon={<Target className="h-4 w-4" />}
-          title={`Current focus — ${PHASE_LABELS[CURRENT_PHASE]}`}
-          href="/roadmap"
-          empty={focus.length === 0 ? "Nothing in progress this phase." : null}
+          icon={<ExternalLink className="h-4 w-4" />}
+          title="Quick links"
+          href="/quick-links"
+          empty={activeLinks.length === 0 ? "No links yet." : null}
         >
-          {focus.map((r) => (
-            <Row key={r.id}>
-              <span className="flex-1 truncate">{r.title}</span>
-              <Badge tone="muted">{STATUS_LABELS[r.status]}</Badge>
-            </Row>
+          {activeLinks.map((l) => (
+            <a
+              key={l.id}
+              href={l.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 py-1 text-sm text-[color:var(--primary)] hover:underline"
+            >
+              <span className="flex-1 truncate">{l.title}</span>
+              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+            </a>
           ))}
         </Section>
 
@@ -252,26 +291,6 @@ export function Dashboard() {
                 {timeAgo(m.updated_at)}
               </span>
             </Row>
-          ))}
-        </Section>
-
-        <Section
-          icon={<ExternalLink className="h-4 w-4" />}
-          title="Quick links"
-          href="/quick-links"
-          empty={activeLinks.length === 0 ? "No links yet." : null}
-        >
-          {activeLinks.map((l) => (
-            <a
-              key={l.id}
-              href={l.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 py-1 text-sm text-[color:var(--primary)] hover:underline"
-            >
-              <span className="flex-1 truncate">{l.title}</span>
-              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-            </a>
           ))}
         </Section>
       </div>
