@@ -241,12 +241,33 @@ export const LINK_CATEGORIES = [
   "Other",
 ] as const;
 
+// ---- Meeting recurrence ----
+export const RECURRENCES = [
+  "none",
+  "daily",
+  "weekly",
+  "biweekly",
+  "monthly",
+] as const;
+export type Recurrence = (typeof RECURRENCES)[number];
+
+export const RECURRENCE_LABELS: Record<Recurrence, string> = {
+  none: "One-off",
+  daily: "Daily",
+  weekly: "Weekly",
+  biweekly: "Every 2 weeks",
+  monthly: "Monthly",
+};
+
 // ---- Row types (mirror the SQL in supabase/migrations exactly) ----
 export type Meeting = {
   id: string;
   title: string;
   category: string | null;
   scheduled_at: string | null;
+  timezone: string | null;
+  location: string | null;
+  recurrence: Recurrence;
   agenda: string | null;
   notes: string | null;
   decisions: string | null;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { CalendarClock, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, MapPin, Plus, Repeat, Trash2, Video } from "lucide-react";
 import {
   Badge,
   Button,
@@ -13,7 +13,12 @@ import {
   Select,
   Textarea,
 } from "@/shared/ui";
-import { MEETING_CATEGORIES, type Meeting } from "@/lib/types";
+import {
+  MEETING_CATEGORIES,
+  RECURRENCES,
+  RECURRENCE_LABELS,
+  type Meeting,
+} from "@/lib/types";
 import { meetingSchema } from "@/lib/schemas";
 import {
   createMeeting,
@@ -21,14 +26,17 @@ import {
   listMeetings,
   updateMeeting,
 } from "@/lib/meetings";
+import {
+  formatInLocal,
+  localTimezone,
+  timezoneOptions,
+  utcToZonedWall,
+  zonedWallToUtc,
+} from "@/lib/tz";
 import { useRole } from "./AuthGate";
 
-function fmtDate(iso: string | null): string {
-  if (!iso) return "No date set";
-  return new Date(iso).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+function isUrl(s: string): boolean {
+  return /^https?:\/\//.test(s);
 }
 
 export function MeetingsPage() {
@@ -88,14 +96,39 @@ export function MeetingsPage() {
           {meetings.map((m) => (
             <Card key={m.id} className="flex flex-col gap-2 p-4">
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{m.title}</span>
                     {m.category && <Badge tone="muted">{m.category}</Badge>}
+                    {m.recurrence !== "none" && (
+                      <Badge tone="info" className="gap-1">
+                        <Repeat className="h-3 w-3" />
+                        {RECURRENCE_LABELS[m.recurrence]}
+                      </Badge>
+                    )}
                   </div>
-                  <div className="mt-0.5 flex items-center gap-1 text-xs text-[color:var(--muted)]">
-                    <CalendarClock className="h-3.5 w-3.5" />
-                    {fmtDate(m.scheduled_at)}
+                  <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[color:var(--muted)]">
+                    <span className="inline-flex items-center gap-1">
+                      <CalendarClock className="h-3.5 w-3.5" />
+                      {m.scheduled_at
+                        ? formatInLocal(m.scheduled_at)
+                        : "No date set"}
+                    </span>
+                    {m.location &&
+                      (isUrl(m.location) ? (
+                        <a
+                          href={m.location}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[color:var(--primary)] hover:underline"
+                        >
+                          <Video className="h-3.5 w-3.5" /> Join
+                        </a>
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="h-3.5 w-3.5" /> {m.location}
+                        </span>
+                      ))}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -156,12 +189,14 @@ function MeetingDialog({
   onClose: () => void;
   onSaved: (m: Meeting) => void;
 }) {
+  const tz = meeting?.timezone || localTimezone();
   const [form, setForm] = useState({
     title: meeting?.title ?? "",
     category: meeting?.category ?? "",
-    scheduled_at: meeting?.scheduled_at
-      ? meeting.scheduled_at.slice(0, 16)
-      : "",
+    wall: meeting?.scheduled_at ? utcToZonedWall(meeting.scheduled_at, tz) : "",
+    timezone: tz,
+    recurrence: meeting?.recurrence ?? "none",
+    location: meeting?.location ?? "",
     agenda: meeting?.agenda ?? "",
     notes: meeting?.notes ?? "",
     decisions: meeting?.decisions ?? "",
@@ -176,7 +211,17 @@ function MeetingDialog({
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    const parsed = meetingSchema.safeParse(form);
+    const parsed = meetingSchema.safeParse({
+      title: form.title,
+      category: form.category,
+      scheduled_at: form.wall ? zonedWallToUtc(form.wall, form.timezone) : "",
+      timezone: form.wall ? form.timezone : "",
+      location: form.location,
+      recurrence: form.recurrence,
+      agenda: form.agenda,
+      notes: form.notes,
+      decisions: form.decisions,
+    });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Invalid input");
       return;
@@ -193,6 +238,8 @@ function MeetingDialog({
       setSaving(false);
     }
   }
+
+  const tzOptions = timezoneOptions();
 
   return (
     <Dialog open onClose={onClose} title={meeting ? "Edit meeting" : "New meeting"}>
@@ -224,15 +271,56 @@ function MeetingDialog({
             </Select>
           </div>
           <div>
-            <Label htmlFor="scheduled_at">When</Label>
+            <Label>Repeats</Label>
+            <Select
+              value={form.recurrence}
+              onChange={(e) => field("recurrence", e.target.value)}
+              className="mt-1"
+            >
+              {RECURRENCES.map((r) => (
+                <option key={r} value={r}>
+                  {RECURRENCE_LABELS[r]}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="wall">When</Label>
             <Input
-              id="scheduled_at"
+              id="wall"
               type="datetime-local"
-              value={form.scheduled_at}
-              onChange={(e) => field("scheduled_at", e.target.value)}
+              value={form.wall}
+              onChange={(e) => field("wall", e.target.value)}
               className="mt-1"
             />
           </div>
+          <div>
+            <Label>Timezone</Label>
+            <Select
+              value={form.timezone}
+              onChange={(e) => field("timezone", e.target.value)}
+              className="mt-1"
+            >
+              {tzOptions.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+        <div>
+          <Label htmlFor="location">Location</Label>
+          <Input
+            id="location"
+            value={form.location}
+            onChange={(e) => field("location", e.target.value)}
+            className="mt-1"
+            placeholder="Meet/Zoom link, or a physical room"
+          />
+          <p className="mt-1 text-xs text-[color:var(--muted)]">
+            Paste a video link (shows a “Join” button) or type a room name.
+          </p>
         </div>
         <div>
           <Label htmlFor="agenda">Agenda</Label>

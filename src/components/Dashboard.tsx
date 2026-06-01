@@ -32,6 +32,7 @@ import { listDocuments } from "@/lib/documents";
 import { listRoadmapItems } from "@/lib/roadmap";
 import { listQuickLinks } from "@/lib/quick-links";
 import { indexProfiles, timeAgo } from "@/lib/format";
+import { formatInLocal, nextOccurrence } from "@/lib/tz";
 import { useSession } from "./AuthGate";
 
 export function Dashboard() {
@@ -101,16 +102,16 @@ export function Dashboard() {
         .slice(0, 5),
     [tickets],
   );
+  // Next occurrence (recurrence-aware) within the next 5 days, max 5 items.
   const upcoming = useMemo(() => {
     const now = Date.now();
+    const horizon = now + 5 * 24 * 60 * 60 * 1000;
     return meetings
-      .filter((m) => m.scheduled_at && new Date(m.scheduled_at).getTime() >= now)
-      .sort(
-        (a, b) =>
-          new Date(a.scheduled_at!).getTime() -
-          new Date(b.scheduled_at!).getTime(),
-      )
-      .slice(0, 3);
+      .filter((m) => m.scheduled_at)
+      .map((m) => ({ m, next: nextOccurrence(m.scheduled_at!, m.recurrence, now) }))
+      .filter(({ next }) => next.getTime() >= now && next.getTime() <= horizon)
+      .sort((a, b) => a.next.getTime() - b.next.getTime())
+      .slice(0, 5);
   }, [meetings]);
   const recentNotes = useMemo(
     () => meetings.filter((m) => m.notes).slice(0, 3),
@@ -153,18 +154,15 @@ export function Dashboard() {
           icon={<CalendarClock className="h-4 w-4" />}
           title="Upcoming meetings"
           href="/meetings"
-          empty={upcoming.length === 0 ? "No upcoming meetings." : null}
+          empty={
+            upcoming.length === 0 ? "Nothing in the next 5 days." : null
+          }
         >
-          {upcoming.map((m) => (
+          {upcoming.map(({ m, next }) => (
             <Row key={m.id}>
               <span className="flex-1 truncate">{m.title}</span>
               <span className="text-xs text-[color:var(--muted)]">
-                {new Date(m.scheduled_at!).toLocaleString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
+                {formatInLocal(next.toISOString())}
               </span>
             </Row>
           ))}
