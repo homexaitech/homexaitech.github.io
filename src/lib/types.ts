@@ -132,3 +132,178 @@ export const TYPE_TONE: Record<TicketType, Tone> = {
   chore: "muted",
   task: "info",
 };
+
+// =============================================================================
+// Team-board entities (meetings, action items, docs, roadmap, quick links)
+// =============================================================================
+
+// ---- Action items ----
+export const ACTION_ITEM_STATUSES = [
+  "open",
+  "in_progress",
+  "blocked",
+  "done",
+] as const;
+export type ActionItemStatus = (typeof ACTION_ITEM_STATUSES)[number];
+
+export const ACTION_ITEM_STATUS_LABELS: Record<ActionItemStatus, string> = {
+  open: "Open",
+  in_progress: "In Progress",
+  blocked: "Blocked",
+  done: "Done",
+};
+
+export const ACTION_ITEM_STATUS_TONE: Record<ActionItemStatus, Tone> = {
+  open: "muted",
+  in_progress: "info",
+  blocked: "danger",
+  done: "success",
+};
+
+// ---- Roadmap ----
+export const ROADMAP_PHASES = ["mvp", "demo", "beta", "future"] as const;
+export type RoadmapPhase = (typeof ROADMAP_PHASES)[number];
+
+export const PHASE_LABELS: Record<RoadmapPhase, string> = {
+  mvp: "MVP",
+  demo: "Demo",
+  beta: "Beta",
+  future: "Future",
+};
+
+export const PHASE_TONE: Record<RoadmapPhase, Tone> = {
+  mvp: "primary",
+  demo: "info",
+  beta: "warn",
+  future: "muted",
+};
+
+// The phase treated as "current" for the dashboard focus section. Bump to
+// advance the active phase (a movable pointer can replace this later).
+export const CURRENT_PHASE: RoadmapPhase = "mvp";
+
+// ---- Documents ----
+export const DOC_STATUSES = ["active", "archived"] as const;
+export type DocStatus = (typeof DOC_STATUSES)[number];
+
+// ---- Suggested categories / types (free-text in DB; drive select options) ----
+export const MEETING_CATEGORIES = [
+  "Weekly dev",
+  "UI review",
+  "Backend review",
+  "AI / prompt review",
+  "Investor demo prep",
+  "Product planning",
+  "Bug triage",
+] as const;
+
+export const DOC_CATEGORIES = [
+  "Product Design",
+  "Backend",
+  "Frontend",
+  "AI / Prompt",
+  "Energy Analysis",
+  "Business",
+  "Investor Demo",
+  "Meeting Notes",
+  "Infrastructure",
+] as const;
+
+export const DOC_TYPES = [
+  "Google Doc",
+  "Google Sheet",
+  "Google Drive Folder",
+  "GitHub Repo",
+  "Figma",
+  "PDF",
+  "Other",
+] as const;
+
+export const ROADMAP_CATEGORIES = [
+  "Core product",
+  "Energy analysis",
+  "AI agent",
+  "Device detection",
+  "Upgrade recommendation",
+  "User profile",
+  "Data pipeline",
+  "Business development",
+] as const;
+
+export const LINK_CATEGORIES = [
+  "GitHub",
+  "Google Drive",
+  "Supabase",
+  "Deployment",
+  "API docs",
+  "Design",
+  "Demo",
+  "Other",
+] as const;
+
+// ---- Row types (mirror the SQL in supabase/migrations exactly) ----
+export type Meeting = {
+  id: string;
+  title: string;
+  category: string | null;
+  scheduled_at: string | null;
+  agenda: string | null;
+  notes: string | null;
+  decisions: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ActionItem = {
+  id: string;
+  title: string;
+  owner: string | null;
+  due_date: string | null;
+  status: ActionItemStatus;
+  completed: boolean;
+  ticket_id: string | null;
+  meeting_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Document = {
+  id: string;
+  title: string;
+  url: string;
+  category: string | null;
+  doc_type: string | null;
+  description: string | null;
+  status: DocStatus;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RoadmapItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  phase: RoadmapPhase;
+  category: string | null;
+  owner: string | null;
+  priority: Priority;
+  status: Status;
+  ticket_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type QuickLink = {
+  id: string;
+  title: string;
+  url: string;
+  category: string | null;
+  sensitive: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};

@@ -10,7 +10,14 @@ import {
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
-import { LayoutGrid, LogOut, Ticket as TicketIcon } from "lucide-react";
+import {
+  CalendarClock,
+  FileText,
+  LayoutGrid,
+  ListChecks,
+  LogOut,
+  Ticket as TicketIcon,
+} from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { Avatar, Button } from "@/shared/ui";
 import { cn } from "@/shared/utils";
@@ -131,6 +138,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
 const NAV: { href: string; label: string; icon: typeof LayoutGrid }[] = [
   { href: "/", label: "Dashboard", icon: LayoutGrid },
   { href: "/tickets", label: "Tickets", icon: TicketIcon },
+  { href: "/meetings", label: "Meetings", icon: CalendarClock },
+  { href: "/action-items", label: "Actions", icon: ListChecks },
+  { href: "/docs", label: "Docs", icon: FileText },
 ];
 
 function AppHeader({ session }: { session: SessionValue }) {
