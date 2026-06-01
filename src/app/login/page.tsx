@@ -2,8 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Ticket as TicketIcon } from "lucide-react";
+import { LayoutGrid } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { Button, Input, Label, FieldError } from "@/shared/ui";
 
@@ -31,7 +30,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthShell title="Sign in" subtitle="HomeX dev team ticket board">
+    <AuthShell title="Sign in" subtitle="HomeX dev team board">
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <div>
           <Label htmlFor="email">Email</Label>
@@ -61,11 +60,8 @@ export default function LoginPage() {
         <Button type="submit" disabled={loading}>
           {loading ? "Signing in…" : "Sign in"}
         </Button>
-        <p className="text-center text-sm text-[color:var(--muted)]">
-          No account?{" "}
-          <Link href="/signup" className="text-[color:var(--primary)] underline">
-            Sign up
-          </Link>
+        <p className="text-center text-xs text-[color:var(--muted)]">
+          Access is invite-only. Contact a team admin to be added.
         </p>
       </form>
     </AuthShell>
@@ -86,7 +82,7 @@ export function AuthShell({
       <div className="w-full max-w-sm rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-8 shadow-sm">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--primary)] text-[color:var(--primary-foreground)]">
-            <TicketIcon className="h-5 w-5" />
+            <LayoutGrid className="h-5 w-5" />
           </span>
           <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
           <p className="text-sm text-[color:var(--muted)]">{subtitle}</p>
