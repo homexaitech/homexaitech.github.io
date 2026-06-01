@@ -148,5 +148,11 @@ export const quickLinkUpdateSchema = quickLinkSchema.partial();
 export type QuickLinkValues = z.output<typeof quickLinkSchema>;
 export type QuickLinkUpdateValues = z.output<typeof quickLinkUpdateSchema>;
 
+// ---- Notes ----
+export const noteSchema = z.object({
+  body: z.string().trim().min(1, "Note can't be empty").max(500),
+});
+export type NoteValues = z.output<typeof noteSchema>;
+
 // ---- Profile role management (admin) ----
 export const updateRoleSchema = z.object({ role: z.enum(ROLES) });

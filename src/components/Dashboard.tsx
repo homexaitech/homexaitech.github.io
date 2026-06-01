@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
-  AlertTriangle,
   CalendarClock,
   ExternalLink,
   FileText,
@@ -17,7 +16,6 @@ import {
   PHASE_LABELS,
   PRIORITY_LABELS,
   PRIORITY_TONE,
-  ROADMAP_PHASES,
   STATUS_LABELS,
   type Document,
   type Meeting,
@@ -34,6 +32,7 @@ import { listQuickLinks } from "@/lib/quick-links";
 import { indexProfiles, timeAgo } from "@/lib/format";
 import { formatInLocal, nextOccurrence } from "@/lib/tz";
 import { useSession } from "./AuthGate";
+import { NotesCard } from "./NotesCard";
 
 export function Dashboard() {
   const { email, profile } = useSession();
@@ -91,10 +90,6 @@ export function Dashboard() {
       ),
     [tickets],
   );
-  const blocked = useMemo(
-    () => tickets.filter((t) => t.status === "blocked"),
-    [tickets],
-  );
   const recentTickets = useMemo(
     () =>
       [...tickets]
@@ -113,10 +108,6 @@ export function Dashboard() {
       .sort((a, b) => a.next.getTime() - b.next.getTime())
       .slice(0, 5);
   }, [meetings]);
-  const recentNotes = useMemo(
-    () => meetings.filter((m) => m.notes).slice(0, 3),
-    [meetings],
-  );
   const importantDocs = useMemo(
     () => docs.filter((d) => d.status === "active").slice(0, 6),
     [docs],
@@ -143,10 +134,10 @@ export function Dashboard() {
             Current focus — {PHASE_LABELS[CURRENT_PHASE]}
           </div>
           <Link
-            href="/roadmap"
+            href="/product-links"
             className="text-xs text-[color:var(--muted)] hover:text-[color:var(--primary)]"
           >
-            View all
+            Product links
           </Link>
         </div>
         {focus.length === 0 ? (
@@ -219,46 +210,6 @@ export function Dashboard() {
         </Section>
 
         <Section
-          icon={<AlertTriangle className="h-4 w-4" />}
-          title="Blocked tickets"
-          href="/tickets"
-          empty={blocked.length === 0 ? "Nothing blocked. 🎉" : null}
-        >
-          {blocked.slice(0, 6).map((t) => (
-            <TicketRow key={t.id} t={t} byId={byId} />
-          ))}
-        </Section>
-
-        <Section
-          icon={<MapIcon className="h-4 w-4" />}
-          title="Recently updated tickets"
-          href="/tickets"
-          empty={recentTickets.length === 0 ? "No tickets yet." : null}
-        >
-          {recentTickets.map((t) => (
-            <TicketRow key={t.id} t={t} byId={byId} showTime />
-          ))}
-        </Section>
-
-        <Section
-          icon={<MapIcon className="h-4 w-4" />}
-          title="Roadmap summary"
-          href="/roadmap"
-          empty={roadmap.length === 0 ? "No roadmap items yet." : null}
-        >
-          {ROADMAP_PHASES.map((phase) => {
-            const count = roadmap.filter((r) => r.phase === phase).length;
-            if (!count) return null;
-            return (
-              <Row key={phase}>
-                <span className="flex-1">{PHASE_LABELS[phase]}</span>
-                <Badge tone="muted">{count}</Badge>
-              </Row>
-            );
-          })}
-        </Section>
-
-        <Section
           icon={<FileText className="h-4 w-4" />}
           title="Important docs"
           href="/docs"
@@ -279,20 +230,17 @@ export function Dashboard() {
         </Section>
 
         <Section
-          icon={<FileText className="h-4 w-4" />}
-          title="Recent notes"
-          href="/meetings"
-          empty={recentNotes.length === 0 ? "No meeting notes yet." : null}
+          icon={<MapIcon className="h-4 w-4" />}
+          title="Recently updated tickets"
+          href="/tickets"
+          empty={recentTickets.length === 0 ? "No tickets yet." : null}
         >
-          {recentNotes.map((m) => (
-            <Row key={m.id}>
-              <span className="flex-1 truncate">{m.title}</span>
-              <span className="text-xs text-[color:var(--muted)]">
-                {timeAgo(m.updated_at)}
-              </span>
-            </Row>
+          {recentTickets.map((t) => (
+            <TicketRow key={t.id} t={t} byId={byId} showTime />
           ))}
         </Section>
+
+        <NotesCard byId={byId} />
       </div>
     </div>
   );

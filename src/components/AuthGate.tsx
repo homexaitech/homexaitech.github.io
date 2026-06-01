@@ -18,6 +18,7 @@ import {
   ListChecks,
   LogOut,
   Map as MapIcon,
+  StickyNote,
   Ticket as TicketIcon,
   Users,
 } from "lucide-react";
@@ -69,9 +70,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
     async function load() {
       const {
         data: { user },
+        error: userError,
       } = await supabase.auth.getUser();
       if (!active) return;
-      if (!user) {
+      if (userError || !user) {
+        // A stale/expired refresh token left in storage (e.g. "Invalid Refresh
+        // Token: Refresh Token Not Found") surfaces here. Purge it so the failed
+        // refresh doesn't repeat — and spam the console — on every load.
+        if (userError) await supabase.auth.signOut().catch(() => {});
+        if (!active) return;
         setStatus("anon");
         router.replace("/login");
         return;
@@ -150,6 +157,7 @@ const NAV: NavItem[] = [
   { href: "/tickets", label: "Tickets", icon: TicketIcon },
   { href: "/meetings", label: "Meetings", icon: CalendarClock },
   { href: "/action-items", label: "Actions", icon: ListChecks },
+  { href: "/notes", label: "Notes", icon: StickyNote },
   { href: "/docs", label: "Docs", icon: FileText },
   { href: "/roadmap", label: "Roadmap", icon: MapIcon },
   { href: "/quick-links", label: "Links", icon: Link2 },

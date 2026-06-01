@@ -81,6 +81,17 @@ export type Comment = {
   created_at: string;
 };
 
+// Short, shared "keep in mind" notes. Any team member can add one; the author
+// or an admin can edit/delete it (enforced by RLS, see the notes migration).
+export type Note = {
+  id: string;
+  body: string;
+  author: string | null;
+  archived: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Activity = {
   id: string;
   ticket_id: string;
