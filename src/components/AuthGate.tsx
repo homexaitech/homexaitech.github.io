@@ -7,21 +7,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
-import { LayoutGrid, LogOut } from "lucide-react";
+import { LayoutGrid, LogOut, Ticket as TicketIcon } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { Avatar, Button } from "@/shared/ui";
-
-// Minimal profile shape we read for display. The full role-aware Profile type
-// arrives in Phase 1; the smoke test only needs name + avatar color.
-type Profile = {
-  id: string;
-  email: string | null;
-  name: string | null;
-  avatar_color: string | null;
-};
+import { cn } from "@/shared/utils";
+import { ROLE_LABELS, type Profile, type Role } from "@/lib/types";
 
 type SessionValue = { userId: string; email: string; profile: Profile | null };
 
@@ -33,14 +26,30 @@ export function useSession(): SessionValue {
   return v;
 }
 
-// Client-side route guard for the static-exported site. Renders children only
-// once an authenticated Supabase session is confirmed; otherwise redirects to
-// /login. PHASE 0: auth only — team-membership + role gating land in Phase 1.
+// Role helpers derived from the session. A null/unknown role is the least
+// privileged 'viewer'. These only drive UI affordances — RLS is the real fence.
+export function useRole(): { role: Role; isAdmin: boolean; canWrite: boolean } {
+  const { profile } = useSession();
+  const raw = profile?.role;
+  const role: Role =
+    raw === "admin" || raw === "developer" || raw === "viewer"
+      ? raw
+      : "viewer";
+  return {
+    role,
+    isAdmin: role === "admin",
+    canWrite: role === "admin" || role === "developer",
+  };
+}
+
+// Client-side route guard for the static-exported site. Confirms an
+// authenticated session AND active team membership before rendering anything
+// protected — no protected data flashes before the checks resolve.
 export function AuthGate({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [status, setStatus] = useState<"loading" | "authed" | "anon">(
-    "loading",
-  );
+  const [status, setStatus] = useState<
+    "loading" | "authed" | "anon" | "denied"
+  >("loading");
   const [session, setSession] = useState<SessionValue | null>(null);
 
   useEffect(() => {
@@ -57,9 +66,18 @@ export function AuthGate({ children }: { children: ReactNode }) {
         router.replace("/login");
         return;
       }
+      // Authoritative membership check (the allowlist gate). Fail closed: only a
+      // confirmed `true` lets the user in; anything else → access denied.
+      const { data: isMember } = await supabase.rpc("is_team_member");
+      if (!active) return;
+      if (isMember !== true) {
+        setStatus("denied");
+        router.replace("/access-denied");
+        return;
+      }
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id, email, name, avatar_color")
+        .select("*")
         .eq("id", user.id)
         .maybeSingle();
       if (!active) return;
@@ -110,36 +128,77 @@ export function AuthGate({ children }: { children: ReactNode }) {
   );
 }
 
+const NAV: { href: string; label: string; icon: typeof LayoutGrid }[] = [
+  { href: "/", label: "Dashboard", icon: LayoutGrid },
+  { href: "/tickets", label: "Tickets", icon: TicketIcon },
+];
+
 function AppHeader({ session }: { session: SessionValue }) {
   const router = useRouter();
+  const pathname = usePathname();
   const displayName = session.profile?.name || session.email || "You";
+  const role = session.profile?.role;
+  const roleLabel =
+    role === "admin" || role === "developer" || role === "viewer"
+      ? ROLE_LABELS[role as Role]
+      : ROLE_LABELS.viewer;
 
   async function signOut() {
     await createClient().auth.signOut();
     router.replace("/login");
   }
 
+  function isActive(href: string) {
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(href + "/");
+  }
+
   return (
     <header className="sticky top-0 z-10 border-b border-[color:var(--border)] bg-[color:var(--card)]/80 backdrop-blur">
-      <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
+      <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-4 px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[color:var(--primary)] text-[color:var(--primary-foreground)]">
             <LayoutGrid className="h-4 w-4" />
           </span>
-          <span className="text-sm font-semibold tracking-tight">
+          <span className="hidden text-sm font-semibold tracking-tight sm:inline">
             HomeX Team Board
           </span>
         </Link>
-        <div className="flex items-center gap-3">
+
+        <nav className="flex items-center gap-1 overflow-x-auto">
+          {NAV.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-sm transition",
+                  isActive(item.href)
+                    ? "bg-[color:var(--accent)] font-medium text-[color:var(--primary)]"
+                    : "text-[color:var(--muted)] hover:bg-[color:var(--accent)]/50",
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="ml-auto flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Avatar
               name={displayName}
               color={session.profile?.avatar_color}
               size="sm"
             />
-            <span className="hidden text-sm text-[color:var(--muted)] sm:inline">
-              {displayName}
-            </span>
+            <div className="hidden leading-tight sm:block">
+              <div className="text-sm">{displayName}</div>
+              <div className="text-[10px] uppercase tracking-wide text-[color:var(--muted)]">
+                {roleLabel}
+              </div>
+            </div>
           </div>
           <Button variant="ghost" size="sm" onClick={signOut} title="Sign out">
             <LogOut className="h-4 w-4" />

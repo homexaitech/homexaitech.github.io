@@ -1,0 +1,150 @@
+import { createClient } from "@/utils/supabase/client";
+import type { Activity, Comment, Profile, Ticket } from "./types";
+import type { CreateTicketValues, UpdateTicketValues } from "./schemas";
+
+// Lazy accessor — never instantiate the client at module load, so static
+// prerendering (`next build`) doesn't construct it (and doesn't need env vars).
+// createClient() is memoized, so this returns the one shared instance.
+const db = () => createClient();
+
+function throwIf<T>({ data, error }: { data: T; error: unknown }): T {
+  if (error) throw asError(error);
+  return data;
+}
+
+// Supabase/PostgREST errors are plain objects ({ message, details, hint, code }),
+// not Error instances — so `instanceof Error` checks miss them and they surface
+// as "[object Object]" unhandled rejections. Normalize into a real Error carrying
+// the underlying Postgres message so failures are legible in the UI and console.
+function asError(error: unknown): Error {
+  if (error instanceof Error) return error;
+  if (error && typeof error === "object") {
+    const e = error as {
+      message?: string;
+      details?: string;
+      hint?: string;
+      code?: string;
+    };
+    const parts = [e.message, e.details, e.hint].filter(Boolean);
+    const msg = parts.length ? parts.join(" — ") : JSON.stringify(error);
+    return new Error(e.code ? `${msg} (${e.code})` : msg);
+  }
+  return new Error(String(error));
+}
+
+// ---- Tickets ----------------------------------------------------------------
+
+export async function listTickets(): Promise<Ticket[]> {
+  return throwIf(
+    await db()
+      .from("tickets")
+      .select("*")
+      .order("created_at", { ascending: false }),
+  ) as Ticket[];
+}
+
+export async function getTicket(id: string): Promise<Ticket | null> {
+  const { data, error } = await db()
+    .from("tickets")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw asError(error);
+  return data as Ticket | null;
+}
+
+export async function createTicket(
+  values: CreateTicketValues,
+  reporter: string,
+): Promise<Ticket> {
+  const row = {
+    title: values.title,
+    description: values.description ?? "",
+    type: values.type,
+    priority: values.priority,
+    assignees: values.assignees ?? [],
+    reviewers: values.reviewers ?? [],
+    reporter,
+    labels: values.labels ?? [],
+    file_path: values.file_path ?? null,
+    pr_url: values.pr_url ?? null,
+    commit_sha: values.commit_sha ?? null,
+  };
+  return throwIf(
+    await db().from("tickets").insert(row).select("*").single(),
+  ) as Ticket;
+}
+
+export async function updateTicket(
+  id: string,
+  patch: UpdateTicketValues,
+): Promise<Ticket> {
+  return throwIf(
+    await db()
+      .from("tickets")
+      .update(patch)
+      .eq("id", id)
+      .select("*")
+      .single(),
+  ) as Ticket;
+}
+
+export async function deleteTicket(id: string): Promise<void> {
+  const { error } = await db().from("tickets").delete().eq("id", id);
+  if (error) throw asError(error);
+}
+
+// ---- Comments ---------------------------------------------------------------
+
+export async function listComments(ticketId: string): Promise<Comment[]> {
+  return throwIf(
+    await db()
+      .from("comments")
+      .select("*")
+      .eq("ticket_id", ticketId)
+      .order("created_at", { ascending: true }),
+  ) as Comment[];
+}
+
+export async function addComment(
+  ticketId: string,
+  author: string,
+  body: string,
+): Promise<Comment> {
+  return throwIf(
+    await db()
+      .from("comments")
+      .insert({ ticket_id: ticketId, author, body })
+      .select("*")
+      .single(),
+  ) as Comment;
+}
+
+// ---- Activity ---------------------------------------------------------------
+
+export async function listActivity(ticketId: string): Promise<Activity[]> {
+  return throwIf(
+    await db()
+      .from("activity")
+      .select("*")
+      .eq("ticket_id", ticketId)
+      .order("created_at", { ascending: false }),
+  ) as Activity[];
+}
+
+// ---- Profiles ---------------------------------------------------------------
+
+export async function listProfiles(): Promise<Profile[]> {
+  return throwIf(
+    await db().from("profiles").select("*").order("name"),
+  ) as Profile[];
+}
+
+// ---- Auth helpers -----------------------------------------------------------
+
+export async function getCurrentUserId(): Promise<string | null> {
+  const {
+    data: { user },
+  } = await db().auth.getUser();
+  return user?.id ?? null;
+}

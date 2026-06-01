@@ -1,41 +1,51 @@
 "use client";
 
-import { CheckCircle2 } from "lucide-react";
-import { AuthGate, useSession } from "@/components/AuthGate";
+import Link from "next/link";
+import { Ticket as TicketIcon, ArrowRight } from "lucide-react";
+import { AuthGate, useSession, useRole } from "@/components/AuthGate";
 import { Card } from "@/shared/ui";
+import { ROLE_LABELS } from "@/lib/types";
 
-export default function HomePage() {
+export default function DashboardPage() {
   return (
     <AuthGate>
-      <Landing />
+      <Dashboard />
     </AuthGate>
   );
 }
 
-function Landing() {
-  const { email } = useSession();
+function Dashboard() {
+  const { email, profile } = useSession();
+  const { role } = useRole();
+  const name = profile?.name || email;
+
   return (
-    <div className="mx-auto max-w-xl py-10">
-      <Card className="flex flex-col items-center gap-3 p-8 text-center">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[color:var(--accent)] text-[color:var(--primary)]">
-          <CheckCircle2 className="h-6 w-6" />
-        </span>
+    <div className="flex flex-col gap-6">
+      <div>
         <h1 className="text-xl font-semibold tracking-tight">
-          Login works 🎉
+          Welcome, {name}
         </h1>
         <p className="text-sm text-[color:var(--muted)]">
-          You are signed in as{" "}
-          <span className="font-medium text-[color:var(--foreground)]">
-            {email}
+          You&apos;re signed in as <strong>{ROLE_LABELS[role]}</strong>. The full
+          dashboard (sprint focus, blockers, meetings, docs, roadmap) is coming
+          soon.
+        </p>
+      </div>
+
+      <Link href="/tickets" className="block">
+        <Card className="flex items-center gap-4 p-5 transition hover:border-[color:var(--primary)]/30 hover:shadow-md">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[color:var(--accent)] text-[color:var(--primary)]">
+            <TicketIcon className="h-5 w-5" />
           </span>
-          .
-        </p>
-        <p className="max-w-sm text-xs text-[color:var(--muted)]">
-          This is the Phase&nbsp;0 smoke test for the HomeX Team Board. Auth +
-          static hosting on GitHub Pages are confirmed working. Dashboard,
-          tickets, meetings, docs, roadmap and roles come next.
-        </p>
-      </Card>
+          <div className="flex-1">
+            <div className="font-medium">Tickets</div>
+            <div className="text-sm text-[color:var(--muted)]">
+              Development, debugging and dispatch board.
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-[color:var(--muted)]" />
+        </Card>
+      </Link>
     </div>
   );
 }
