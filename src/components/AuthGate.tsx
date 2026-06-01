@@ -14,9 +14,12 @@ import {
   CalendarClock,
   FileText,
   LayoutGrid,
+  Link2,
   ListChecks,
   LogOut,
+  Map as MapIcon,
   Ticket as TicketIcon,
+  Users,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { Avatar, Button } from "@/shared/ui";
@@ -135,12 +138,22 @@ export function AuthGate({ children }: { children: ReactNode }) {
   );
 }
 
-const NAV: { href: string; label: string; icon: typeof LayoutGrid }[] = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutGrid;
+  adminOnly?: boolean;
+};
+
+const NAV: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutGrid },
   { href: "/tickets", label: "Tickets", icon: TicketIcon },
   { href: "/meetings", label: "Meetings", icon: CalendarClock },
   { href: "/action-items", label: "Actions", icon: ListChecks },
   { href: "/docs", label: "Docs", icon: FileText },
+  { href: "/roadmap", label: "Roadmap", icon: MapIcon },
+  { href: "/quick-links", label: "Links", icon: Link2 },
+  { href: "/team", label: "Team", icon: Users, adminOnly: true },
 ];
 
 function AppHeader({ session }: { session: SessionValue }) {
@@ -148,10 +161,12 @@ function AppHeader({ session }: { session: SessionValue }) {
   const pathname = usePathname();
   const displayName = session.profile?.name || session.email || "You";
   const role = session.profile?.role;
+  const isAdmin = role === "admin";
   const roleLabel =
     role === "admin" || role === "developer" || role === "viewer"
       ? ROLE_LABELS[role as Role]
       : ROLE_LABELS.viewer;
+  const navItems = NAV.filter((item) => !item.adminOnly || isAdmin);
 
   async function signOut() {
     await createClient().auth.signOut();
@@ -176,7 +191,7 @@ function AppHeader({ session }: { session: SessionValue }) {
         </Link>
 
         <nav className="flex items-center gap-1 overflow-x-auto">
-          {NAV.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link
