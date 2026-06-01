@@ -212,7 +212,11 @@ function AppHeader({ session }: { session: SessionValue }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
-          <div className="flex items-center gap-2">
+          <Link
+            href="/account"
+            className="flex items-center gap-2 rounded-lg px-1.5 py-1 transition hover:bg-[color:var(--accent)]/50"
+            title="Account settings"
+          >
             <Avatar
               name={displayName}
               color={session.profile?.avatar_color}
@@ -224,7 +228,7 @@ function AppHeader({ session }: { session: SessionValue }) {
                 {roleLabel}
               </div>
             </div>
-          </div>
+          </Link>
           <Button variant="ghost" size="sm" onClick={signOut} title="Sign out">
             <LogOut className="h-4 w-4" />
           </Button>
